@@ -3,8 +3,6 @@
 class ChainPay_Payments_Model_PaymentMethod extends Mage_Payment_Model_Method_Abstract
 {
     protected $_code = 'chainpay';
-	protected $_formBlockType               = 'chainpay/form_chainpay';
-    protected $_infoBlockType               = 'chainpay/info';
     protected $_isGateway                   = true;
     protected $_canAuthorize                = true;
     protected $_canCapture                  = false;
@@ -18,6 +16,16 @@ class ChainPay_Payments_Model_PaymentMethod extends Mage_Payment_Model_Method_Ab
     protected $_canRefund                   = false;
     protected $_canVoid                     = false;
 	protected static $_redirectUrl;
+	
+	public function createFormBlock($name)
+    {
+        $block = $this->getLayout()->createBlock('chainpay/form_chainpay', $name)
+            ->setMethod('chainpay')
+            ->setPayment($this->getPayment())
+            ->setTemplate('chainpay/formBlock.phtml');
+
+        return $block;
+    }
  
    	public function authorize(Varien_Object $payment, $amount)
     {
@@ -30,10 +38,7 @@ class ChainPay_Payments_Model_PaymentMethod extends Mage_Payment_Model_Method_Ab
 		
 		$invoice = $this->CreateInvoice($order, $amount);
 		
-		$paymentUri = 'https://testpay.chainpay.com/invoice?id=';
-		$redirect = $paymentUri . $invoice->Id;
-		
-		self::$_redirectUrl = $redirect;
+		self::$_redirectUrl = $this->GetPaymentUri($invoice->Id);
 		
 		return $this;
 	}
@@ -69,9 +74,7 @@ class ChainPay_Payments_Model_PaymentMethod extends Mage_Payment_Model_Method_Ab
 	 }
 	 
 	 private function ChainPay_Post($params, $relativeUri)
-        {
-			$apiAbsoluteUri = 'https://testapi.altxe.com/';
-			
+     {
  			$options = array(
 				'http' => array(
 					'method'  => 'POST',
@@ -82,7 +85,7 @@ class ChainPay_Payments_Model_PaymentMethod extends Mage_Payment_Model_Method_Ab
 				  )
 			);
 			 
-			$absoluteUri = $apiAbsoluteUri . $relativeUri . '.json';
+			$absoluteUri = $this->GetApiUri() . $relativeUri . '.json';
 			$context     = stream_context_create($options);
 			$result      = file_get_contents($absoluteUri, false, $context);
 			
@@ -99,7 +102,7 @@ class ChainPay_Payments_Model_PaymentMethod extends Mage_Payment_Model_Method_Ab
             else {
                 if(strpos($http_response_header[0], '401') !== FALSE)                
                 {
-                    $this->debugData('Unauthorized: Called ChainPay with invalid API Key. Please check your API Key in the WooCommerce checkout settings.');
+                    $this->debugData('Unauthorized: Called ChainPay with invalid API Key. Please check your API Key in the Payment Method settings.');
                 }
                 else
                 {
@@ -111,6 +114,28 @@ class ChainPay_Payments_Model_PaymentMethod extends Mage_Payment_Model_Method_Ab
             
             return false;
         }
+		
+		private function GetApiUri() {
+			if(\Mage::getStoreConfig('payment/chainpay/sandbox'))
+			{
+				return 'https://testapi.altxe.com/';
+			}
+			else
+			{
+				return 'https://api.altxe.com/';
+			}
+		}
+		
+        private function GetPaymentUri($invoiceId) {
+			if(\Mage::getStoreConfig('payment/chainpay/sandbox'))
+			{
+				return 'https://testpay.chainpay.com/invoice?id=' . $invoiceId;
+			}
+			else
+			{
+				return 'https://pay.chainpay.com/invoice?id=' . $invoiceId;
+			}
+		}
         
         private function ChainPay_DecodeResponse($data)
         {

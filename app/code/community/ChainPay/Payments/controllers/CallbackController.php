@@ -51,21 +51,21 @@ class ChainPay_Payments_CallbackController extends Mage_Core_Controller_Front_Ac
 							}
 							
 							$newStatus = $settings['invoice_paid'];
-							$order->addStatusToHistory($newStatus, sprintf('Callback notification changed status to %s', $newStatus));
+							$order->addStatusToHistory($newStatus, sprintf('ChainPay notification changed status to %s', $newStatus));
 							$order->save();
 							break;
 						case 'InvoiceCompleted':
 							$this->debugData('WebHook - OrderId: ' . $orderId . ' is now Completed.');
 														
 							$newStatus = $settings['invoice_completed'];
-							$order->addStatusToHistory($newStatus, sprintf('Callback notification changed status to %s', $newStatus));
+							$order->addStatusToHistory($newStatus, sprintf('ChainPay notification changed status to %s', $newStatus));
 							$order->save();
 							break;
 						case 'InvoiceExpired':
 							$this->debugData('WebHook - OrderId: ' . $orderId . ' is now Expired.');
 														
 							$newStatus = $settings['invoice_expired'];
-							$order->addStatusToHistory($newStatus, sprintf('Callback notification changed status to %s', $newStatus));
+							$order->addStatusToHistory($newStatus, sprintf('ChainPay notification changed status to %s', $newStatus));
 							$order->save();
 							break;
 					}
@@ -73,13 +73,14 @@ class ChainPay_Payments_CallbackController extends Mage_Core_Controller_Front_Ac
 				}
 				else
 				{
-						$this->debugData('Could not locate Order relating to WebHook event: ' . json_encode($data));
+					$this->debugData('Could not locate Order relating to WebHook event: ' . json_encode($data));
+					throw new \Exception('Could not locate Order relating to WebHook event: ' . json_encode($data));
 				}
 			}
 		}
 		
 		$this->debugData('WebHook event failure: ' . json_encode($data));
-		return false;
+		throw new \Exception('WebHook event failure: ' . json_encode($data));
     }
 	
 	function DecodeResponse($data)
@@ -96,8 +97,6 @@ class ChainPay_Payments_CallbackController extends Mage_Core_Controller_Front_Ac
 	
 	function ValidateSignature($message, $signature, $key)
 	{
-		return true;
-		
 		$hmac = hash_hmac('sha256', $message, $key );
 		$hmacBytes = pack('H*', $hmac); 
 		
